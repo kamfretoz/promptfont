@@ -1,5 +1,5 @@
-name: Rebuild Index
-on: [push, pull_request]
+name: Create release
+on: [create, workflow_dispatch]
 
 jobs:
   build:
@@ -24,17 +24,19 @@ jobs:
           ~/quicklisp/
         key: ${{ runner.os }}
         restore-keys: ${{ runner.os }}
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Rebuild
       run: |
-        ./compile.lisp
-    - name: GH Pages deploy
-      if: github.head_ref == null
-      run: |
-        git clone -q --branch=gh-pages https://${{ secrets.ACCESS_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git ~/gh-pages
-        cp $FILES ~/gh-pages/
-        git -C ~/gh-pages add $FILES
-        git -C ~/gh-pages commit -qm "CI index rebuild." || echo "Nothing to commit."
-        git -C ~/gh-pages push -q origin gh-pages
-      env:
-        FILES: LICENSE.txt README.md index.html glyphs.json chars.txt promptfont.ttf promptfont.otf promptfont.css atlas-android.png atlas-gamepad.png atlas-icons.png atlas-keyboard.png atlas-mouse.png
+        ./compile.lisp all
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: promptfont-${{ github.ref }}
+        path: promptfont.zip
+    - name: Create release
+      id: create_release
+      uses: ncipollo/release-action@v1
+      with:
+        allowUpdates: true
+        name: Release ${{ github.ref }}
+        artifacts: promptfont.zip
